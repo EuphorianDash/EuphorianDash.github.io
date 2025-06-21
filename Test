@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retro Terminal Portfolio</title>
+<style>
+  @font-face {
+    font-family: 'IBM VGA8';
+    src: url('https://int10h.org/oldschool-pc-fonts/fonts/ibm_vga8.woff2') format('woff2'),
+         url('https://int10h.org/oldschool-pc-fonts/fonts/ibm_vga8.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    background-color: #000;
+    color: #33ff33;
+    font-family: 'IBM VGA8', monospace;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+    cursor: default;
+  }
+  
+  .crt-startup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    background: #33ff33;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 30px 20px rgba(51, 255, 51, 0.8);
+    z-index: 100;
+    animation: startup 1.5s forwards;
+  }
+  
+  .crt-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, transparent 0%, #000 100%);
+    z-index: 99;
+    animation: fadeOverlay 2.5s forwards;
+  }
+  
+  .crt-flicker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(0, 40, 0, 0.15) 50%, rgba(0,0,0,0.25) 50%), 
+                linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));
+    background-size: 100% 4px, 4px 100%;
+    z-index: 10;
+    pointer-events: none;
+    animation: flicker 0.15s infinite;
+    opacity: 0.7;
+  }
+  
+  .scanline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 10px;
+    background: rgba(51, 255, 51, 0.15);
+    box-shadow: 0 0 10px rgba(51, 255, 51, 0.4);
+    animation: scan 4s linear infinite;
+    z-index: 11;
+    opacity: 0.4;
+  }
+  
+  .terminal-container {
+    width: 95%;
+    max-width: 800px;
+    height: 90vh;
+    background-color: #000;
+    border: 3px solid #33ff33; /* Brighter green border */
+    box-shadow: 0 0 20px rgba(51, 255, 51, 0.4),
+               0 0 30px rgba(0, 255, 0, 0.6), /* Brighter glow */
+               inset 0 0 15px rgba(51, 255, 51, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .terminal-header {
+    padding: 10px 15px;
+    background-color: #003300;
+    border-bottom: 2px solid #33ff33; /* Brighter border */
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    user-select: none;
+  }
+  
+  .terminal-title {
+    font-weight: bold;
+    color: #33ff33;
+    text-shadow: 0 0 8px rgba(51, 255, 51, 0.7);
+  }
+  
+  .terminal-status {
+    color: #33aa33;
+    display: flex;
+    gap: 15px;
+  }
+  
+  .status-item {
+    display: flex;
+    align-items: center;
+  }
+  
+  .status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #33ff33;
+    margin-right: 6px;
+    box-shadow: 0 0 8px rgba(51, 255, 51, 0.7);
+    animation: pulse 1.5s infinite;
+  }
+
+  .status-indicator.audio-on {
+    background-color: #33ff33;
+    box-shadow: 0 0 8px rgba(51, 255, 51, 0.7);
+  }
+  .status-indicator.audio-off {
+    background-color: #ff3333;
+    box-shadow: 0 0 8px rgba(255, 51, 51, 0.7);
+  }
+  
+  #terminal {
+    height: calc(100% - 40px);
+    padding: 20px;
+    overflow-y: auto;
+    font-size: 15px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    position: relative;
+    color: #33ff33;
+    
+    /* Hide scrollbar */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  #terminal::-webkit-scrollbar {
+    display: none;
+  }
+  
+  #inputLine {
+    display: inline;
+  }
+  
+  .cursor {
+    display: inline-block;
+    width: 8px;
+    background-color: #33ff33;
+    animation: blink 1s step-end infinite;
+  }
+  
+  .project-gallery {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 15px;
+  }
+  
+  .project-item {
+    background: rgba(0, 50, 0, 0.3);
+    border: 1px solid #33aa33;
+    border-radius: 4px;
+    padding: 15px;
+    transition: transform 0.3s, box-shadow 0.3s;
+  }
+  
+  .project-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 15px rgba(51, 255, 51, 0.4);
+  }
+  
+  .project-title {
+    color: #33ff33;
+    font-weight: bold;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+    text-shadow: 0 0 5px rgba(51, 255, 51, 0.5);
+  }
+  
+  .project-image {
+    width: 100%;
+    height: 150px;
+    background: rgba(0, 60, 0, 0.4);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #33aa33;
+  }
+  
+  .project-image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: cover;
+  }
+  
+  .project-desc {
+    color: #aaffaa;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+  
+  .game-container {
+    position: relative;
+    margin: 10px 0;
+  }
+  
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 1px;
+    margin: 10px auto;
+    width: fit-content;
+  }
+  
+  .game-cell {
+    width: 20px;
+    height: 20px;
+    background: rgba(0, 30, 0, 0.3);
+    border: 1px solid #33aa33;
+  }
+  
+  .game-cell.active {
+    background: #33ff33;
+    box-shadow: 0 0 5px rgba(51, 255, 51, 0.7);
+  }
+  
+  .game-cell.snake {
+    background: #33ff33;
+    border-radius: 3px;
+  }
+  
+  .game-cell.food {
+    background: #ff3333;
+    border-radius: 50%;
+    animation: pulse 1s infinite;
+  }
+  
+  .game-cell.asteroid {
+    background: #aaaaaa;
+  }
+  
+  .game-cell.ship {
+    background: #33ff33;
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+  
+  .game-cell.bullet {
+    background: #ffff00;
+  }
+  
+  .tetris-piece-I { background: #00ffff; }
+  .tetris-piece-O { background: #ffff00; }
+  .tetris-piece-T { background: #aa00ff; }
+  .tetris-piece-S { background: #00ff00; }
+  .tetris-piece-Z { background: #ff0000; }
+  .tetris-piece-J { background: #0000ff; }
+  .tetris-piece-L { background: #ffaa00; }
+  
+  .game-instructions {
+    color: #aaffaa;
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(0, 40, 0, 0.2);
+    border: 1px solid #33aa33;
+    font-size: 0.9rem;
+  }
+  
+  .game-score {
+    color: #ffff33;
+    font-weight: bold;
+    margin-top: 10px;
+    text-align: center;
+  }
+  
+  .game-over {
+    color: #ff3333;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 20px;
+    text-shadow: 0 0 8px rgba(255, 51, 51, 0.7);
+  }
+  
+  .ibm-logo-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    animation: fadeIn 3s ease-in;
+  }
+  
+  .easter-egg {
+    color: #ff33ff;
+    text-shadow: 0 0 5px rgba(255, 51, 255, 0.7);
+  }
+  
+  .coffee {
+    color: #aa5500;
+    text-shadow: 0 0 3px rgba(170, 85, 0, 0.7);
+  }
+  
+  .donut-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+
+  @keyframes blink {
+    0%, 100% { background-color: #33ff33; }
+    50% { background-color: transparent; }
+  }
+  
+  @keyframes flicker {
+    0% { opacity: 0.9; }
+    20% { opacity: 0.95; }
+    40% { opacity: 0.98; }
+    60% { opacity: 0.99; }
+    80% { opacity: 0.97; }
+    100% { opacity: 0.93; }
+  }
+  
+  @keyframes startup {
+    0% { 
+      width: 10px; 
+      height: 10px; 
+      box-shadow: 0 0 30px 20px rgba(51, 255, 51, 0.8);
+    }
+    50% {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      box-shadow: 0 0 80px 60px rgba(51, 255, 51, 0.6);
+    }
+    100% { 
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      box-shadow: 0 0 100px 80px rgba(51, 255, 51, 0);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes fadeOverlay {
+    0% { background-color: rgba(0, 0, 0, 1); }
+    50% { background-color: rgba(0, 0, 0, 0.8); }
+    70% { background-color: rgba(0, 0, 0, 0.6); }
+    100% { background-color: rgba(0, 0, 0, 0); }
+  }
+  
+  @keyframes scan {
+    0% { top: 0; }
+    100% { top: 100%; }
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+  
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  
+  .sound-controls {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    display: flex;
+    gap: 10px;
+    z-index: 20;
+  }
+  
+  .sound-btn {
+    background: rgba(0, 50, 0, 0.5);
+    border: 1px solid #33aa33;
+    color: #33ff33;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+  }
+  
+  .sound-btn:hover {
+    background: rgba(0, 80, 0, 0.7);
+    transform: scale(1.1);
+  }
+  
+  .tetris-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+  <div class="crt-startup"></div>
+  <div class="crt-overlay"></div>
+  <div class="crt-flicker"></div>
+  <div class="scanline"></div>
+  
+  <div class="sound-controls">
+    <div class="sound-btn" id="soundToggle">🔊</div>
+  </div>
+  
+  <div class="terminal-container">
+    <div class="terminal-header">
+      <div class="terminal-title">IBM Personal Computer - EuphorianDash Portfolio</div>
+      <div class="terminal-status">
+        <div class="status-item">
+          <span class="status-indicator"></span> ONLINE
+        </div>
+        <div class="status-item">
+          <span class="status-indicator"></span> <span id="audioStatus">AUDIO</span>
+        </div>
+      </div>
+    </div>
+    <div id="terminal"></div>
+  </div>
+
+<script>
+  const terminal = document.getElementById('terminal');
+  const audioStatus = document.getElementById('audioStatus');
+  const soundToggle = document.getElementById('soundToggle');
+  
+  // Audio context for sound effects
+  let audioContext;
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) {
+    console.error("AudioContext not supported:", e);
+  }
+  
+  // Audio files (replace with your GitHub raw URLs)
+  const audioFiles = {
+    startup: 'https://raw.githubusercontent.com/EuphorianDash/EuphorianDash.github.io/refs/heads/main/degaus.mp3',
+    tetris: 'https://raw.githubusercontent.com/EuphorianDash/EuphorianDash.github.io/refs/heads/main/Tetris%20Theme.mp3',
+   // snake: 'https://raw.githubusercontent.com/your-username/your-repo/main/snake.mp3',
+   // asteroids: 'https://raw.githubusercontent.com/your-username/your-repo/main/asteroids.mp3',
+   // easterEgg: 'https://raw.githubusercontent.com/your-username/your-repo/main/easter-egg.mp3',
+  };
+
+  // Game state variables
+  let currentLine = "";
+  let history = [];
+  let inputEnabled = false;
+  let animationInterval = null;
+  let gameInterval = null;
+  let soundEnabled = true;
+  let menuActive = false;
+  let gameActive = false;
+  let currentSong = null;
+  let lastSoundTime = 0;
+  let soundCounter = 0;
+  
+  // Tetris game variables
+  let tetrisBoard = [];
+  let currentPiece = null;
+  let nextPiece = null;
+  let tetrisScore = 0;
+  let tetrisLevel = 1;
+  let tetrisLines = 0;
+  let tetrisGameInterval = null;
+  let isGameOver = false;
+
+  // Tetris pieces
+const TETRIS_PIECES = [
+    { shape: [[1,1,1,1]], color: '#00FFFF', name: 'I' },    // Cyan
+    { shape: [[1,1],[1,1]], color: '#FFFF00', name: 'O' },  // Yellow
+    { shape: [[0,1,0],[1,1,1]], color: '#AA00FF', name: 'T' }, // Purple
+    { shape: [[1,1,0],[0,1,1]], color: '#00FF00', name: 'S' },  // Green
+    { shape: [[0,1,1],[1,1,0]], color: '#FF0000', name: 'Z' },  // Red
+    { shape: [[1,0,0],[1,1,1]], color: '#0000FF', name: 'J' },  // Blue
+    { shape: [[0,0,1],[1,1,1]], color: '#FFAA00', name: 'L' }   // Orange
+];
+
+// Helper function to lighten colors
+function lightenColor(color, percent) {
+    const num = parseInt(color.replace('#', ''), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) + amt;
+    const G = (num >> 8 & 0x00FF) + amt;
+    const B = (num & 0x0000FF) + amt;
+    return '#' + (
+        0x1000000 + 
+        (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + 
+        (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + 
+        (B < 255 ? B < 1 ? 0 : B : 255)
+    ).toString(16).slice(1);
+}
+  
+  // Konami code sequence
+  const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+  let konamiIndex = 0;
+
+  // Boot sequence
+  const bootLines = [
+    "IBM Personal Computer BIOS",
+    "Copyright IBM Corp 1981-1987",
+    "",
+    "System BIOS Version 1.10",
+    "",
+    "Testing memory...",
+    "  640KB OK",
+    "",
+    "Checking peripherals...",
+    "  Keyboard: Detected",
+    "  Floppy Drive A: 1.44MB",
+    "  Hard Disk C: 20MB",
+    "",
+    "Initializing video controller...",
+    "  MDA: Not detected",
+    "  CGA: Not detected",
+    "  EGA: Detected",
+    "",
+    "Initializing sound system...",
+    "  Sound Blaster 16: Detected",
+    "",
+    "Starting MS-DOS...",
+    "MS-DOS Version 3.30",
+    "(C) Copyright Microsoft Corp 1981-1987",
+    ""
+  ];
+
+  // ASCII IBM Logo
+   const ibmLogo = [
+"*****************************************************",
+"*****************************************************",
+"███████████  ████████████      ████████      ████████",
+"███████████  ███████████████   █████████    █████████",
+ "  █████        ████   █████     ████████  ████████",
+ "  █████        ███████████      ████  ███ ███ ████",
+ "  █████        ███████████      ████  ███████ ████",
+"   █████        ████   █████     ████   █████  ████",
+"███████████  ███████████████   ██████    ███   ██████",
+"███████████  ████████████      ██████     █    ██████",
+"*****************************************************",
+"*  This system is for the use of authorized users   *",
+"*  only. Usage of  this system may be monitored     *",
+"*  and recorded                                     *",
+"*****************************************************",
+
+  ];
+
+  function restoreInput() {
+    menuActive = false;
+    currentLine = "";
+    printPrompt();
+    document.addEventListener('keydown', handleInput);
+  }
+
+  // Projects data
+  const projects = {
+    coding: [
+      {
+        title: "Data Saving System",
+        desc: "Robust data persistence solution for Roblox games with encryption and compression. This system handles player data securely and efficiently, ensuring data integrity across sessions.",
+        img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150' viewBox='0 0 300 150'%3E%3Crect width='300' height='150' fill='%23003300'/%3E%3Ctext x='150' y='75' font-family='monospace' font-size='20' fill='%2333ff33' text-anchor='middle'%3EData Saving System%3C/text%3E%3C/svg%3E"
+      },
+      {
+        title: "Network Interactions",
+        desc: "Complex event-based networking system for multiplayer experiences. This system enables real-time interactions between players with minimal latency and maximum reliability.",
+        img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150' viewBox='0 0 300 150'%3E%3Crect width='300' height='150' fill='%23003300'/%3E%3Ctext x='150' y='75' font-family='monospace' font-size='20' fill='%2333ff33' text-anchor='middle'%3ENetwork System%3C/text%3E%3C/svg%3E"
+      },
+      {
+        title: "Physics Simulation",
+        desc: "Advanced physics engine for realistic interactions. This system simulates real-world physics with accuracy and performance optimization.",
+        img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150' viewBox='0 0 300 150'%3E%3Crect width='300' height='150' fill='%23003300'/%3E%3Ctext x='150' y='75' font-family='monospace' font-size='20' fill='%2333ff33' text-anchor='middle'%3EPhysics Engine%3C/text%3E%3C/svg%3E"
+      }
+    ],
+    builds: [
+      {
+        title: "Retro Cityscape",
+        desc: "1980s-inspired cyberpunk city with neon lights and detailed interiors. This build features a fully explorable environment with interactive elements and atmospheric lighting.",
+        img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150' viewBox='0 0 300 150'%3E%3Crect width='300' height='150' fill='%23003300'/%3E%3Ctext x='150' y='75' font-family='monospace' font-size='20' fill='%2333ff33' text-anchor='middle'%3ERetro City%3C/text%3E%3C/svg%3E"
+      },
+      {
+        title: "Fantasy Castle",
+        desc: "Medieval fortress with magical elements and intricate design details. This build includes a fully furnished interior, secret passages, and animated environmental effects.",
+        img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150' viewBox='0 0 300 150'%3E%3Crect width='300' height='150' fill='%23003300'/%3E%3Ctext x='150' y='75' font-family='monospace' font-size='20' fill='%2333ff33' text-anchor='middle'%3EFantasy Castle%3C/text%3E%3C/svg%3E"
+      },
+      {
+        title: "Space Station",
+        desc: "Futuristic orbital station with realistic sci-fi elements. This build features zero-gravity areas, functional airlocks, and detailed control rooms.",
+        img: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150' viewBox='0 0 300 150'%3E%3Crect width='300' height='150' fill='%23003300'/%3E%3Ctext x='150' y='75' font-family='monospace' font-size='20' fill='%2333ff33' text-anchor='middle'%3ESpace Station%3C/text%3E%3C/svg%3E"
+      }
+    ]
+  };
+
+  // Sound functions
+  function playSound(frequency, duration, volume = 0.2, type = 'square') {
+    if (!soundEnabled || !audioContext) return null;
+    
+    try {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.type = type;
+      oscillator.frequency.value = frequency;
+      gainNode.gain.value = volume;
+      
+      oscillator.start();
+      
+      return new Promise(resolve => {
+        gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration/1000);
+        
+        setTimeout(() => {
+          oscillator.stop();
+          resolve();
+        }, duration);
+      });
+    } catch (e) {
+      console.error("Error playing sound:", e);
+      return Promise.resolve();
+    }
+  }
+
+  function playSoundEffect(sound) {
+    if (!soundEnabled || !audioFiles[sound]) return;
+    
+    try {
+      const audio = new Audio(audioFiles[sound]);
+      audio.volume = 0.5;
+      audio.play().catch(e => console.log("Audio play failed:", e));
+      return audio;
+    } catch (e) {
+      console.error("Error playing sound:", e);
+    }
+  }
+
+  function playGameSong(game) {
+    if (!soundEnabled || !audioFiles[game]) return;
+    
+    stopGameMusic();
+    
+    const audio = new Audio(audioFiles[game]);
+    audio.loop = true;
+    audio.volume = 0.3;
+    audio.play().catch(e => console.log("Audio play failed:", e));
+    
+    currentSong = {
+      audio: audio,
+      timeout: null
+    };
+  }
+
+  function stopGameMusic() {
+    if (currentSong) {
+      if (currentSong.timeout) {
+        clearTimeout(currentSong.timeout);
+      }
+      if (currentSong.audio) {
+        currentSong.audio.pause();
+        currentSong.audio.currentTime = 0;
+      }
+      currentSong = null;
+    }
+  }
+
+  function playStartupBeep() {
+    playSoundEffect('startup');
+  }
+
+  // Sound toggle functionality
+  soundToggle.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    soundToggle.textContent = soundEnabled ? "🔊" : "🔇";
+    updateAudioStatus();
+    playSound(880, 100, 0.15);
+    
+    if (!soundEnabled && currentSong) {
+      stopGameMusic();
+    }
+  });
+
+  function updateAudioStatus() {
+    const audioIndicator = document.querySelector('.status-item:nth-child(2) .status-indicator');
+    if (soundEnabled) {
+        audioIndicator.className = "status-indicator audio-on";
+        audioStatus.textContent = "AUDIO";
+    } else {
+        audioIndicator.className = "status-indicator audio-off";
+        audioStatus.textContent = "MUTED";
+    }
+    
+    // Also update the settings menu text if it's open
+    const audioStatusText = document.getElementById('audioStatusText');
+    if (audioStatusText) {
+        audioStatusText.textContent = soundEnabled ? "ENABLED" : "DISABLED";
+        audioStatusText.style.color = soundEnabled ? '#33ff33' : '#ff3333';
+    }
+}
+
+  // Konami code functions
+  function checkKonamiCode(key) {
+    if (key === konamiCode[konamiIndex]) {
+      konamiIndex++;
+      if (konamiIndex === konamiCode.length) {
+        konamiCodeActivated();
+        konamiIndex = 0;
+      }
+    } else {
+      konamiIndex = 0;
+    }
+  }
+
+  function konamiCodeActivated() {
+    playSoundEffect('easterEgg');
+    terminal.innerHTML += "\n\n<<< SECRET UNLOCKED >>>\n";
+    terminal.innerHTML += `
+    <div class="easter-egg">
+      ⠀⠀⠀⠀⠀⠀⠀⣀⣤⣤⣤⣤⣀⠀⠀⠀⠀⠀⠀
+      ⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣿⣿⣿⣷⣄⠀⠀⠀
+      ⠀⠀⠀⣰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠀⠀
+      ⠀⠀⢰⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡆⠀
+      ⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠀
+      ⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇
+      ⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿
+      ⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿
+      ⠈⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠛⠁
+    </div>
+    `;
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  // Coffee maker command
+  function makeCoffee() {
+    terminal.innerHTML += "\n\n<<< BREWING COFFEE >>>\n";
+    terminal.innerHTML += `
+    <div class="coffee">
+       ) )
+      ( (
+    ........
+    |      |]
+    \\      /
+     \`----'
+    </div>
+    `;
+    playSoundEffect('startup');
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+  
+  // Tetris 
+   function startTetris() {
+    // Initialize board properly
+    tetrisBoard = Array(20).fill().map(() => Array(10).fill(0));
+    tetrisScore = 0;
+    tetrisLevel = 1;
+    tetrisLines = 0;
+    isGameOver = false;
+    
+    // Create first pieces with positions
+    currentPiece = getRandomPiece();
+    currentPiece.x = 3;
+    currentPiece.y = 0;
+    
+    nextPiece = getRandomPiece();
+    
+    // Start game loop with proper timing
+    clearInterval(tetrisGameInterval); // Clear any existing interval
+    tetrisGameInterval = setInterval(updateTetris, 1000 - (tetrisLevel * 50));
+    
+    playGameSong('tetris');
+    renderTetris();
+}
+
+  function getRandomPiece() {
+    const piece = JSON.parse(JSON.stringify(TETRIS_PIECES[Math.floor(Math.random() * TETRIS_PIECES.length)]));
+    piece.x = 0;  // Add this
+    piece.y = 0;  // Add this
+    return piece;
+}
+
+  function renderTetris() {
+    // Create a copy of the board to render
+    let renderBoard = JSON.parse(JSON.stringify(tetrisBoard));
+    
+    // Clear terminal only once
+    terminal.innerHTML = '';
+    
+    // Game info
+    terminal.innerHTML += `TETRIS | SCORE: ${tetrisScore} | LINES: ${tetrisLines} | LEVEL: ${tetrisLevel}\n`;
+    terminal.innerHTML += "-------------------------------\n";
+    
+    // Game container
+    const gameContainer = document.createElement('div');
+    gameContainer.className = 'tetris-container';
+    
+    // Main game board
+    const boardDiv = document.createElement('div');
+    
+    // Add current piece to render board
+    if (currentPiece) {
+        for (let y = 0; y < currentPiece.shape.length; y++) {
+            for (let x = 0; x < currentPiece.shape[y].length; x++) {
+                if (currentPiece.shape[y][x]) {
+                    const boardY = currentPiece.y + y;
+                    const boardX = currentPiece.x + x;
+                    if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
+                        renderBoard[boardY][boardX] = currentPiece.name;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Render board
+    for (let y = 0; y < renderBoard.length; y++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.style.display = 'flex';
+        
+        for (let x = 0; x < renderBoard[y].length; x++) {
+            const cell = document.createElement('div');
+            cell.style.width = '20px';
+            cell.style.height = '20px';
+            cell.style.border = '1px solid #33aa33';
+            
+            if (renderBoard[y][x]) {
+                cell.style.backgroundColor = getPieceColor(renderBoard[y][x]);
+            } else {
+                cell.style.backgroundColor = '#000';
+            }
+            
+            rowDiv.appendChild(cell);
+        }
+        
+        boardDiv.appendChild(rowDiv);
+    }
+    
+    gameContainer.appendChild(boardDiv);
+    
+    // Next piece display
+    const nextPieceDiv = document.createElement('div');
+    nextPieceDiv.innerHTML = "NEXT PIECE:\n";
+    
+    if (nextPiece) {
+        for (let y = 0; y < nextPiece.shape.length; y++) {
+            const rowDiv = document.createElement('div');
+            rowDiv.style.display = 'flex';
+            
+            for (let x = 0; x < nextPiece.shape[y].length; x++) {
+                const cell = document.createElement('div');
+                cell.style.width = '20px';
+                cell.style.height = '20px';
+                cell.style.border = '1px solid #33aa33';
+                
+                if (nextPiece.shape[y][x]) {
+                    cell.style.backgroundColor = nextPiece.color;
+                } else {
+                    cell.style.backgroundColor = '#000';
+                }
+                
+                rowDiv.appendChild(cell);
+            }
+            
+            nextPieceDiv.appendChild(rowDiv);
+        }
+    }
+    
+    gameContainer.appendChild(nextPieceDiv);
+    terminal.appendChild(gameContainer);
+    
+    // Controls info
+    terminal.innerHTML += "\nCONTROLS:\n";
+    terminal.innerHTML += "Left/Right: Move | Up: Rotate | Down: Drop\n";
+    terminal.innerHTML += "ESC: Exit Game\n";
+    
+    if (isGameOver) {
+        const gameOverDiv = document.createElement('div');
+        gameOverDiv.className = 'game-over';
+        gameOverDiv.innerHTML = "GAME OVER!\nPress any key to return...";
+        terminal.appendChild(gameOverDiv);
+    }
+    
+    terminal.scrollTop = terminal.scrollHeight;
+}
+
+function getPieceColor(pieceName) {
+    if (!pieceName) return '#000';
+
+    let lighten = false;
+
+    if (pieceName.endsWith('-light')) {
+        pieceName = pieceName.replace('-light', '');
+        lighten = true;
+    }
+
+    const piece = TETRIS_PIECES.find(p => p.name === pieceName);
+    const baseColor = piece ? piece.color : '#000';
+
+    return lighten ? lightenColor(baseColor, 40) : baseColor;
+}
+
+  function updateTetris() {
+    if (isGameOver) return;
+    
+    // Move piece down
+    if (!movePiece(0, 1)) {
+      // Piece couldn't move down - lock it in place
+      lockPiece();
+      checkLines();
+      
+      // Get next piece
+      currentPiece = nextPiece;
+      currentPiece.x = 3;
+      currentPiece.y = 0;
+      nextPiece = getRandomPiece();
+      
+      // Check if game over
+      if (checkCollision()) {
+        gameOver();
+        return;
+      }
+    }
+    
+    renderTetris();
+  }
+
+  function movePiece(dx, dy) {
+    currentPiece.x += dx;
+    currentPiece.y += dy;
+    
+    if (checkCollision()) {
+      currentPiece.x -= dx;
+      currentPiece.y -= dy;
+      return false;
+    }
+    
+    return true;
+  }
+
+  function rotatePiece() {
+    const originalShape = currentPiece.shape;
+    const rows = currentPiece.shape.length;
+    const cols = currentPiece.shape[0].length;
+    
+    // Transpose and reverse rows to rotate
+    const rotated = [];
+    for (let x = 0; x < cols; x++) {
+      rotated[x] = [];
+      for (let y = 0; y < rows; y++) {
+        rotated[x][y] = currentPiece.shape[rows - 1 - y][x];
+      }
+    }
+    
+    currentPiece.shape = rotated;
+    
+    if (checkCollision()) {
+      currentPiece.shape = originalShape;
+      return false;
+    }
+    
+    return true;
+  }
+
+  function checkCollision() {
+    for (let y = 0; y < currentPiece.shape.length; y++) {
+      for (let x = 0; x < currentPiece.shape[y].length; x++) {
+        if (currentPiece.shape[y][x]) {
+          const newX = currentPiece.x + x;
+          const newY = currentPiece.y + y;
+          
+          if (
+            newX < 0 || 
+            newX >= 10 || 
+            newY >= 20 || 
+            (newY >= 0 && tetrisBoard[newY][newX])
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  function lockPiece() {
+    // Find the lowest possible position
+    while (!checkCollision()) {
+        currentPiece.y++;
+    }
+    currentPiece.y--; // Step back one since we went too far
+    
+    // Lock the piece in place
+    for (let y = 0; y < currentPiece.shape.length; y++) {
+        for (let x = 0; x < currentPiece.shape[y].length; x++) {
+            if (currentPiece.shape[y][x]) {
+                const boardY = currentPiece.y + y;
+                const boardX = currentPiece.x + x;
+                if (boardY >= 0 && boardY < 20 && boardX >= 0 && boardX < 10) {
+                    tetrisBoard[boardY][boardX] = currentPiece.name;
+                }
+            }
+        }
+    }
+}
+
+ 
+ async function checkLines() {
+    let linesCleared = 0;
+    let linesToClear = [];
+
+    // Find complete lines
+    for (let y = tetrisBoard.length - 1; y >= 0; y--) {
+        if (tetrisBoard[y].every(cell => cell)) {
+            linesToClear.push(y);
+        }
+    }
+
+    if (linesToClear.length > 0) {
+
+        // Flash animation: blink lines with lightened colors
+        for (let flash = 0; flash < 3; flash++) {
+            // Lighten the piece names by adding suffix
+            linesToClear.forEach(y => {
+                for (let x = 0; x < 10; x++) {
+                    if (tetrisBoard[y][x]) {
+                        tetrisBoard[y][x] += '-light';
+                    }
+                }
+            });
+
+            renderTetris();
+            playSound(700, 120, 0.7, 'square'); // flash beep
+            await new Promise(r => setTimeout(r, 160));
+
+            // Remove the "-light" suffix to return to original color
+            linesToClear.forEach(y => {
+                for (let x = 0; x < 10; x++) {
+                    if (typeof tetrisBoard[y][x] === 'string' && tetrisBoard[y][x].endsWith('-light')) {
+                        tetrisBoard[y][x] = tetrisBoard[y][x].replace('-light', '');
+                    }
+                }
+            });
+
+            renderTetris();
+            await new Promise(r => setTimeout(r, 160));
+        }
+
+        // Remove lines
+        linesToClear.sort((a, b) => a - b).forEach(y => {
+            tetrisBoard.splice(y, 1);
+            tetrisBoard.unshift(Array(10).fill(0));
+            linesCleared++;
+        });
+
+        // Scoring: 40 points per line * level * linesCleared
+        const pointsPerLine = 40 * tetrisLevel;
+        const points = pointsPerLine * linesCleared;
+        tetrisScore += points;
+        tetrisLines += linesCleared;
+
+        // Level up logic
+        const newLevel = Math.floor(tetrisLines / 10) + 1;
+        if (newLevel > tetrisLevel) {
+            tetrisLevel = newLevel;
+            clearInterval(tetrisGameInterval);
+            tetrisGameInterval = setInterval(updateTetris, Math.max(100, 1000 - (tetrisLevel * 100)));
+        }
+
+        renderTetris();
+    }
+}
+ 
+ 
+  function gameOver() {
+    isGameOver = true;
+    clearInterval(tetrisGameInterval);
+    stopGameMusic();
+    renderTetris();
+    
+    document.addEventListener('keydown', function handleGameOver(e) {
+      document.removeEventListener('keydown', handleGameOver);
+      showGamesMenu();
+    });
+  }
+
+
+     function showProjectsMenu() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "PROJECTS MENU\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Coding Projects\n";
+    terminal.innerHTML += "2. Building Projects\n";
+    terminal.innerHTML += "3. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-3): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.remove();
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            showCodingCategories();
+            break;
+          case '2':
+            showBuildingCategories();
+            break;
+          case '3':
+            terminal.innerHTML += "\n";
+            restoreInput();
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showProjectsMenu();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function showCodingCategories() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "CODING PROJECTS\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Major Codes\n";
+    terminal.innerHTML += "2. Minor Codes\n";
+    terminal.innerHTML += "3. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-3): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.remove();
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            showMajorCodes();
+            break;
+          case '2':
+            showMinorCodes();
+            break;
+          case '3':
+            showProjectsMenu();
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showCodingCategories();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function showMajorCodes() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "MAJOR CODES\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Data Saving System\n";
+    terminal.innerHTML += "2. Network Interactions\n";
+    terminal.innerHTML += "3. Physics Simulation\n";
+    terminal.innerHTML += "4. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-4): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.remove();
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            showProjectDetail(
+              "DATA SAVING SYSTEM",
+              "Robust data persistence solution with encryption and compression\n" +
+              "Features:\n" +
+              "- AES-256 encryption\n" +
+              "- Zlib compression\n" +
+              "- Automatic backup system",
+              "",
+              ["[CODE]", "[DOCS]", "[DEMO]"]
+            );
+            break;
+          case '2':
+            showProjectDetail(
+              "NETWORK INTERACTIONS",
+              "Event-based networking system for multiplayer games\n" +
+              "Features:\n" +
+              "- Low latency messaging\n" +
+              "- Packet prioritization\n" +
+              "- Connection recovery",
+              "",
+              ["[CODE]", "[WHITEPAPER]"]
+            );
+            break;
+          case '3':
+            showProjectDetail(
+              "PHYSICS SIMULATION",
+              "Advanced physics engine for realistic interactions\n" +
+              "Features:\n" +
+              "- Collision detection\n" +
+              "- Soft body physics\n" +
+              "- Fluid simulation",
+              "",
+              ["[CODE]", "[EXAMPLES]"]
+            );
+            break;
+          case '4':
+            showCodingCategories();
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showMajorCodes();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function showMinorCodes() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "MINOR CODES\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Utility Libraries\n";
+    terminal.innerHTML += "2. Code Snippets\n";
+    terminal.innerHTML += "3. Experimental Projects\n";
+    terminal.innerHTML += "4. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-4): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.remove();
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            showProjectDetail(
+              "UTILITY LIBRARIES",
+              "Collection of reusable code components\n" +
+              "Includes:\n" +
+              "- String utilities\n" +
+              "- Math functions\n" +
+              "- Data structures",
+              "",
+              ["[GITHUB]"]
+            );
+            break;
+          case '2':
+            showProjectDetail(
+              "CODE SNIPPETS",
+              "Useful code fragments for common tasks\n" +
+              "Categories:\n" +
+              "- Algorithms\n" +
+              "- UI components\n" +
+              "- System interactions",
+              "",
+              ["[GIST]"]
+            );
+            break;
+          case '3':
+            showProjectDetail(
+              "EXPERIMENTAL PROJECTS",
+              "Cutting-edge research and prototypes\n" +
+              "Current experiments:\n" +
+              "- Neural network visualization\n" +
+              "- Procedural generation\n" +
+              "- Voice control",
+              "",
+              ["[LAB]"]
+            );
+            break;
+          case '4':
+            showCodingCategories();
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showMinorCodes();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function showBuildingCategories() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "BUILDING PROJECTS\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Major Builds\n";
+    terminal.innerHTML += "2. Minor Builds\n";
+    terminal.innerHTML += "3. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-3): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.remove();
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            showMajorBuilds();
+            break;
+          case '2':
+            showMinorBuilds();
+            break;
+          case '3':
+            showProjectsMenu();
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showBuildingCategories();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function showMajorBuilds() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "MAJOR BUILDS\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Retro Cityscape\n";
+    terminal.innerHTML += "2. Fantasy Castle\n";
+    terminal.innerHTML += "3. Space Station\n";
+    terminal.innerHTML += "4. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-4): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.remove();
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            showProjectDetail(
+              "RETRO CITYSCAPE",
+              "1980s-inspired cyberpunk city environment\n" +
+              "Features:\n" +
+              "- 50+ buildings\n" +
+              "- Interactive elements\n" +
+              "- Day/night cycle",
+              "",
+              ["[TOUR]", "[SCREENSHOTS]"]
+            );
+            break;
+          case '2':
+            showProjectDetail(
+              "FANTASY CASTLE",
+              "Medieval fortress with magical elements\n" +
+              "Features:\n" +
+              "- Fully furnished interior\n" +
+              "- Secret passages\n" +
+              "- Animated effects",
+              "",
+              ["[WALKTHROUGH]", ["BLUEPRINTS"]]
+            );
+            break;
+          case '3':
+            showProjectDetail(
+              "SPACE STATION",
+              "Orbital research facility\n" +
+              "Features:\n" +
+              "- Zero-gravity areas\n" +
+              "- Functional systems\n" +
+              "- Detailed control rooms",
+              "",
+              ["[VIDEO]", "[DESIGN DOCS]"]
+            );
+            break;
+          case '4':
+            showBuildingCategories();
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showMajorBuilds();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function showMinorBuilds() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "MINOR BUILDS\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Furniture Sets\n";
+    terminal.innerHTML += "2. Landscape Pieces\n";
+    terminal.innerHTML += "3. Prop Collections\n";
+    terminal.innerHTML += "4. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-4): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.remove();
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            showProjectDetail(
+              "FURNITURE SETS",
+              "Modular furniture collections\n" +
+              "Sets available:\n" +
+              "- Modern office\n" +
+              "- Medieval tavern\n" +
+              "- Sci-fi living",
+              "",
+              ["[SHOWCASE]"]
+            );
+            break;
+          case '2':
+            showProjectDetail(
+              "LANDSCAPE PIECES",
+              "Natural environment components\n" +
+              "Includes:\n" +
+              "- Rock formations\n" +
+              "- Trees and plants\n" +
+              "- Water features",
+              "",
+              ["[GALLERY]"]
+            );
+            break;
+          case '3':
+            showProjectDetail(
+              "PROP COLLECTIONS",
+              "Themed object collections\n" +
+              "Current themes:\n" +
+              "- Laboratory equipment\n" +
+              "- Kitchen utensils\n" +
+              "- Medieval weapons",
+              "",
+              ["[DOWNLOAD]"]
+            );
+            break;
+          case '4':
+            showBuildingCategories();
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showMinorBuilds();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function showProjectDetail(title, description, imageUrl, links) {
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += title + "\n";
+    terminal.innerHTML += "-------------------------------\n";
+    
+    // Image placeholder
+    terminal.innerHTML += "\n[IMAGE: " + title + "]\n";
+    
+    // Description
+    description.split('\n').forEach(line => {
+      terminal.innerHTML += line + "\n";
+    });
+    
+    // Links
+    if (links && links.length > 0) {
+      terminal.innerHTML += "\nLINKS:\n";
+      links.forEach(link => {
+        terminal.innerHTML += "- " + link + "\n";
+      });
+    }
+    
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Press any key (except arrows) to return...";
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleKeyPress(e) {
+      // Ignore arrow keys
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        return;
+      }
+      
+      document.removeEventListener('keydown', handleKeyPress);
+      // Return to previous menu based on context
+      if (title.includes("BUILD")) {
+        if (title.includes("MAJOR")) {
+          showMajorBuilds();
+        } else {
+          showMinorBuilds();
+        }
+      } else {
+        if (title.includes("MAJOR")) {
+          showMajorCodes();
+        } else {
+          showMinorCodes();
+        }
+      }
+    }
+    
+    document.addEventListener('keydown', handleKeyPress);
+  }
+  
+   // Add scroll wheel support
+  terminal.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    if (e.deltaY > 0) {
+      // Scroll down
+      terminal.scrollTop += 20; // Step scroll amount
+    } else {
+      // Scroll up
+      terminal.scrollTop -= 20; // Step scroll amount
+    }
+  });
+
+  // Add arrow key scrolling
+  document.addEventListener('keydown', function(e) {
+    if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
+      e.preventDefault();
+      const step = 20; // Step scroll amount
+      if (e.key === 'ArrowUp') {
+        terminal.scrollTop -= step;
+      } else {
+        terminal.scrollTop += step;
+      }
+    }
+  });
+
+  function showProjects(type) {
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += `${type === 'coding' ? 'CODING' : 'BUILD'} PROJECTS\n`;
+    terminal.innerHTML += "-------------------------------\n";
+    
+    const projectContainer = document.createElement('div');
+    projectContainer.className = 'project-gallery';
+    
+    projects[type].forEach(project => {
+      const projectItem = document.createElement('div');
+      projectItem.className = 'project-item';
+      
+      projectItem.innerHTML = `
+        <div class="project-title">${project.title}</div>
+        <div class="project-image">
+          <img src="${project.img}" alt="${project.title}">
+        </div>
+        <div class="project-desc">${project.desc}</div>
+      `;
+      
+      projectContainer.appendChild(projectItem);
+    });
+    
+    terminal.appendChild(projectContainer);
+    
+    const backPrompt = document.createElement('div');
+    backPrompt.innerHTML = "\n-------------------------------\nPress any key to return...";
+    terminal.appendChild(backPrompt);
+    
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleKeyPress() {
+      document.removeEventListener('keydown', handleKeyPress);
+      terminal.innerHTML += "\n";
+      showProjectsMenu();
+    }
+    
+    document.addEventListener('keydown', handleKeyPress);
+  }
+
+
+
+ function showGamesMenu() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "GAMES MENU\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Tetris\n";
+    terminal.innerHTML += "2. Snake\n";
+    terminal.innerHTML += "3. Asteroids\n";
+    terminal.innerHTML += "4. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-4): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.remove();
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            startTetris();
+            setupTetrisControls();
+            break;
+          case '2':
+            terminal.innerHTML += "\nGame not implemented yet.\n";
+            showGamesMenu();
+            break;
+          case '3':
+            terminal.innerHTML += "\nGame not implemented yet.\n";
+            showGamesMenu();
+            break;
+          case '4':
+            terminal.innerHTML += "\n";
+            restoreInput();
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showGamesMenu();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function setupTetrisControls() {
+    document.addEventListener('keydown', function tetrisControls(e) {
+      if (isGameOver) return;
+      
+      switch(e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          movePiece(-1, 0);
+          renderTetris();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          movePiece(1, 0);
+          renderTetris();
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (movePiece(0, 1)) {
+            tetrisScore++; // Small bonus for soft drop
+          }
+          renderTetris();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          rotatePiece();
+          renderTetris();
+          break;
+        case ' ':
+          e.preventDefault();
+          // Hard drop
+          while(movePiece(0, 1)) {
+            tetrisScore += 2; // Larger bonus for hard drop
+          }
+          lockPiece();
+          checkLines();
+          currentPiece = nextPiece;
+          currentPiece.x = 3;
+          currentPiece.y = 0;
+          nextPiece = getRandomPiece();
+          if (checkCollision()) {
+            gameOver();
+          }
+          renderTetris();
+          break;
+        case 'Escape':
+          e.preventDefault();
+          clearInterval(tetrisGameInterval);
+          stopGameMusic();
+          showGamesMenu();
+          document.removeEventListener('keydown', tetrisControls);
+          break;
+      }
+    });
+  }
+
+  function showAbout() {
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "ABOUT\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Retro Terminal Portfolio\n";
+    terminal.innerHTML += "Version 1.0\n\n";
+    terminal.innerHTML += "Created by EuphorianDash\n";
+    terminal.innerHTML += "A showcase of projects and skills\n";
+    terminal.innerHTML += "in a nostalgic retro terminal style.\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Press any key to return...";
+    
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleKeyPress() {
+      document.removeEventListener('keydown', handleKeyPress);
+    terminal.innerHTML += "\n";
+  processCommand('exit');
+    }
+    
+    document.addEventListener('keydown', handleKeyPress);
+  }
+
+function showSettingsMenu() {
+    menuActive = true;
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "SETTINGS\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += `1 Audio: <span id="audioStatusText" style="color: ${soundEnabled ? '#33ff33' : '#ff3333'}">${soundEnabled ? "ENABLED" : "DISABLED"}</span>\n`;
+    terminal.innerHTML += "2 Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-2): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+        if (e.key === "Enter") {
+            const choice = currentLine.trim();
+            
+            document.removeEventListener('keydown', handleMenuInput);
+            inputEl.remove();
+            cursor.remove();
+            
+            switch(choice) {
+                case '1':
+                    soundEnabled = !soundEnabled;
+                    soundToggle.textContent = soundEnabled ? "🔊" : "🔇";
+                    updateAudioStatus();
+                    
+                    // Play sound only if audio is being enabled
+                    if (soundEnabled) {
+                        playSound(1200, 60, 0.15, 'sine');
+                    }
+                    
+                    // Update the audio status text immediately
+                    const audioStatusText = document.getElementById('audioStatusText');
+                    if (audioStatusText) {
+                        audioStatusText.textContent = soundEnabled ? "ENABLED" : "DISABLED";
+                        audioStatusText.style.color = soundEnabled ? '#33ff33' : '#ff3333';
+                    }
+                    
+                    showSettingsMenu();
+                    break;
+                case '2':
+                    terminal.innerHTML += "\n";
+                    processCommand('exit');
+                    break;
+                default:
+                    terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+                    showSettingsMenu();
+            }
+        } else if (e.key === "Backspace") {
+            if (currentLine.length > 0) {
+                currentLine = currentLine.slice(0, -1);
+                inputEl.textContent = currentLine;
+                if (soundEnabled) playSound(500, 10, 0.08, 'sawtooth');
+            }
+        } else if (e.key.length === 1 && !e.ctrlKey && (e.key === '0' || e.key === '1')) {
+            currentLine += e.key;
+            inputEl.textContent = currentLine;
+            if (soundEnabled) playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+        }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+}
+  
+  function showAsciiArt() {
+    terminal.innerHTML += "\n\n";
+    terminal.innerHTML += "ASCII ART GALLERY\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "1. Donut\n";
+    terminal.innerHTML += "2. Back\n";
+    terminal.innerHTML += "-------------------------------\n";
+    terminal.innerHTML += "Enter choice (1-2): ";
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    
+    function handleMenuInput(e) {
+      if (e.key === "Enter") {
+        const choice = currentLine.trim();
+        playSound(1200, 60, 0.15, 'sine');
+        
+        document.removeEventListener('keydown', handleMenuInput);
+        inputEl.removeAttribute("id");
+        cursor.remove();
+        
+        switch(choice) {
+          case '1':
+            terminal.innerHTML += "\n\n";
+			playSpinningDonutAnimation();
+            terminal.innerHTML += "\n-------------------------------\nPress any key to return...";
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            function handleKeyPress() {
+              document.removeEventListener('keydown', handleKeyPress);
+              showAsciiArt();
+            }
+            
+            document.addEventListener('keydown', handleKeyPress);
+            break;
+          case '2':
+            terminal.innerHTML += "\n";
+            printPrompt();
+            document.addEventListener('keydown', handleInput);
+            menuActive = false;
+            break;
+          default:
+            terminal.innerHTML += "\nInvalid choice. Please try again.\n";
+            showAsciiArt();
+        }
+      } else if (e.key === "Backspace") {
+        if (currentLine.length > 0) {
+          currentLine = currentLine.slice(0, -1);
+          inputEl.textContent = currentLine;
+          playSound(500, 10, 0.08, 'sawtooth');
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !isNaN(e.key)) {
+        currentLine += e.key;
+        inputEl.textContent = currentLine;
+        playSound(800 + Math.random() * 200, 10, 0.08, 'square');
+      }
+    }
+    
+    currentLine = "";
+    document.addEventListener('keydown', handleMenuInput);
+  }
+
+  function stopAnimation() {
+    if (animationInterval) {
+      clearInterval(animationInterval);
+      animationInterval = null;
+    }
+    if (gameInterval) {
+      clearInterval(gameInterval);
+      gameInterval = null;
+    }
+    stopGameMusic();
+    gameActive = false;
+  }
+
+  // Typewriter effect
+  async function typeWriter(text, i = 0, callback) {
+    if (i < text.length) {
+      terminal.innerHTML += text.charAt(i);
+      terminal.scrollTop = terminal.scrollHeight;
+      
+      const char = text.charAt(i);
+      if (char !== ' ' && char !== '\n') {
+        soundCounter++;
+        if (soundCounter % 2 === 0) {
+          const pitch = 600 + Math.random() * 200;
+          await playSound(pitch, 10, 0.06, 'sine');
+        }
+      }
+      
+      setTimeout(() => typeWriter(text, i + 1, callback), 5);
+    } else if (callback) {
+      setTimeout(callback, 50);
+    }
+  }
+
+  // Show IBM logo at startup
+  function showIbmLogo() {
+    terminal.innerHTML = "";
+    const logoContainer = document.createElement('div');
+    logoContainer.className = 'ibm-logo-container';
+    
+    ibmLogo.forEach(line => {
+      const lineElement = document.createElement('div');
+      lineElement.textContent = line;
+      lineElement.style.textAlign = 'center';
+      logoContainer.appendChild(lineElement);
+    });
+    
+    terminal.appendChild(logoContainer);
+    
+    // Play startup sound after a short delay to allow user interaction
+    setTimeout(() => {
+      playStartupBeep();
+    }, 500);
+    
+    setTimeout(() => {
+      terminal.innerHTML = "";
+      bootSequence();
+    }, 5000); // Increased from 4000 to 5000 for longer display
+  }
+
+  function bootSequence(index = 0) {
+    if (index < bootLines.length) {
+      typeWriter(bootLines[index] + "\n", 0, () => {
+        bootSequence(index + 1);
+      });
+    } else {
+      typeWriter("Type 'help' for a list of commands.\n\n", 0, () => {
+        printPrompt();
+        inputEnabled = true;
+        document.addEventListener('keydown', handleInput);
+      });
+    }
+  }
+
+  function printPrompt() {
+    terminal.innerHTML += 'A:\\>';
+    
+    const inputEl = document.createElement('span');
+    inputEl.id = "inputLine";
+    terminal.appendChild(inputEl);
+
+    const cursor = document.createElement('span');
+    cursor.className = "cursor";
+    terminal.appendChild(cursor);
+
+    terminal.scrollTop = terminal.scrollHeight;
+    return inputEl;
+  }
+
+// Donut 
+async function playSpinningDonutAnimation() {
+  const width = 40;
+  const height = 22;
+  let A = 0, B = 0; // rotation angles
+
+  terminal.innerHTML = ""; // clear terminal for animation
+
+  function renderFrame() {
+    let output = "";
+    let zBuffer = Array(width * height).fill(0);
+    let b = Array(width * height).fill(" ");
+
+    for (let j = 0; j < height; j++) {
+      for (let i = 0; i < width; i++) {
+        b[j * width + i] = " ";
+        zBuffer[j * width + i] = 0;
+      }
+    }
+
+    for (let theta = 0; theta < 6.28; theta += 0.07) {
+      for (let phi = 0; phi < 6.28; phi += 0.02) {
+        let sinTheta = Math.sin(theta),
+            cosTheta = Math.cos(theta),
+            sinPhi = Math.sin(phi),
+            cosPhi = Math.cos(phi),
+            sinA = Math.sin(A),
+            cosA = Math.cos(A),
+            sinB = Math.sin(B),
+            cosB = Math.cos(B);
+
+        let circleX = 2 + cosTheta; // radius 2
+        let circleY = sinTheta;
+
+        let x = circleX * (cosB * cosPhi + sinA * sinB * sinPhi) - circleY * cosA * sinB;
+        let y = circleX * (sinB * cosPhi - sinA * cosB * sinPhi) + circleY * cosA * cosB;
+        let z = 5 + cosA * circleX * sinPhi + circleY * sinA;
+        let ooz = 1 / z;
+
+        let xp = Math.floor(width / 2 + 30 * ooz * x);
+        let yp = Math.floor(height / 2 - 15 * ooz * y);
+
+        let luminance = cosPhi * cosTheta * sinB - cosA * cosTheta * sinPhi - sinA * sinTheta + cosB * (cosA * sinTheta - cosTheta * sinA * sinPhi);
+        let luminanceIndex = Math.floor(luminance * 8);
+
+        if (yp >= 0 && yp < height && xp >= 0 && xp < width && ooz > zBuffer[yp * width + xp]) {
+          zBuffer[yp * width + xp] = ooz;
+          const luminanceChars = ".,-~:;=!*#$@";
+          b[yp * width + xp] = luminanceIndex > 0 ? luminanceChars[Math.min(luminanceIndex, luminanceChars.length - 1)] : " ";
+        }
+      }
+    }
+
+    for (let k = 0; k < b.length; k++) {
+      output += b[k];
+      if ((k + 1) % width === 0) output += "\n";
+    }
+    return output;
+  }
+
+  for (let i = 0; i < 200; i++) { // Run animation ~10 seconds (200 frames * 50ms)
+    terminal.innerHTML = "<pre style='font-family: monospace; line-height: 1;'>" + renderFrame() + "</pre>";
+    await new Promise(r => setTimeout(r, 50));
+    A += 0.07;
+    B += 0.03;
+  }
+
+  terminal.innerHTML += "\n-------------------------------\nPress any key to return...";
+  terminal.scrollTop = terminal.scrollHeight;
+
+  function handleExit() {
+    document.removeEventListener('keydown', handleExit);
+    showAsciiArt();
+  }
+  document.addEventListener('keydown', handleExit);
+}
+
+
+       async function handleInput(e) {
+    checkKonamiCode(e.key);
+    
+    if (menuActive || gameActive) return;
+    
+    const inputEl = document.getElementById('inputLine');
+    const cursor = document.querySelector('.cursor');
+
+    if (!inputEnabled) return;
+
+    if (e.key === "Enter") {
+      await playSound(1200, 60, 0.15, 'sine');
+      
+      // Create a new line with the command that was entered
+      const commandLine = document.createElement('div');
+      commandLine.textContent = 'A:\\>' + currentLine;
+      terminal.appendChild(commandLine);
+      
+      document.removeEventListener('keydown', handleInput);
+      if (inputEl) inputEl.remove();
+      if (cursor) cursor.remove();
+
+      history.push(currentLine);
+      
+      if (currentLine.trim().toLowerCase() === 'sudo makecoffee') {
+        makeCoffee();
+        restoreInput();
+      } else {
+        processCommand(currentLine.trim().toLowerCase());
+      }
+      return;
+    }
+
+    // Handle text input
+    if (e.key.length === 1 && !e.ctrlKey) {
+      currentLine += e.key;
+      if (inputEl) inputEl.textContent = currentLine;
+      
+      const now = Date.now();
+      if (now - lastSoundTime > 50) {
+        const pitch = 800 + Math.random() * 200;
+        await playSound(pitch, 10, 0.08, 'square');
+        lastSoundTime = now;
+      }
+    } 
+    // Handle backspace
+    else if (e.key === "Backspace") {
+      if (currentLine.length > 0) {
+        currentLine = currentLine.slice(0, -1);
+        if (inputEl) inputEl.textContent = currentLine;
+        await playSound(500, 10, 0.08, 'sawtooth');
+      }
+    }
+  }
+
+
+
+   function processCommand(cmd) {
+    switch(cmd) {
+      case '':
+        terminal.innerHTML += "\n";
+        restoreInput();
+        break;
+      case 'help':
+        terminal.innerHTML += "\nAvailable commands:\n";
+        terminal.innerHTML += "-------------------------------\n";
+        terminal.innerHTML += "help      - Show this help message\n";
+        terminal.innerHTML += "clear     - Clear the terminal\n";
+        terminal.innerHTML += "projects  - Show projects\n";
+        terminal.innerHTML += "games     - Show games\n";
+        terminal.innerHTML += "about     - Show about information\n";
+        terminal.innerHTML += "settings  - Show settings\n";
+        terminal.innerHTML += "ascii     - Show ASCII art\n";
+        terminal.innerHTML += "exit      - Return to command prompt\n";
+        terminal.innerHTML += "-------------------------------\n";
+        restoreInput();
+        break;
+      case 'clear':
+        terminal.innerHTML = "";
+        restoreInput();
+        break;
+      case 'projects':
+        showProjectsMenu();
+        break;
+      case 'games':
+        showGamesMenu();
+        break;
+      case 'about':
+        showAbout();
+        break;
+      case 'settings':
+        showSettingsMenu();
+        break;
+      case 'ascii':
+        showAsciiArt();
+        break;
+      case 'exit':
+        stopAnimation();
+        restoreInput();
+        break;
+      default:
+        terminal.innerHTML += "\nCommand not found. Type 'help' for available commands.\n";
+        restoreInput();
+    }
+  }
+
+  // Initialize
+  showIbmLogo();
+</script>
+</body>
+</html>
